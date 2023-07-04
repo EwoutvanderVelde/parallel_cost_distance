@@ -7,8 +7,8 @@ import numpy as np
 from mpi_print import print
 
 import init
-import checks
-from CostDistance import do_cost_distance
+import user_input_check
+from Local_CostDistance import do_cost_distance
 from raster import RasterTemplate, Raster
 
 parser = argparse.ArgumentParser()
@@ -24,7 +24,7 @@ COMM = MPI.COMM_WORLD
 rank = COMM.Get_rank()
 size = COMM.Get_size()
 
-checks.user_input(size, args.cost, args.source, args.output)
+user_input_check.user_input(size, args.cost, args.source, args.output)
 
 PARTITION_SIZE = args.partition_size
 PADDING = 1  # If later implementations use Knight move, change this
@@ -42,7 +42,7 @@ CostRasterBand = CostRaster.GetRasterBand(1)
 CumulativeCostRasterLocation = args.output
 NO_DATA_VALUE = CostRasterBand.GetNoDataValue()
 
-checks.cell_size(SourceRaster.GetGeoTransform())
+user_input_check.cell_size(SourceRaster.GetGeoTransform())
 
 CELL_SIZE = SourceRaster.GetGeoTransform()[1]
 
@@ -55,7 +55,7 @@ Y_MAX = max(Y_PARTITIONS)
 X_MAX = max(X_PARTITIONS)
 
 PARTITION_INDICES = [(y, x) for y in Y_PARTITIONS for x in X_PARTITIONS]
-checks.size_vs_partitions(size, PARTITION_INDICES)
+user_input_check.size_vs_partitions(size, PARTITION_INDICES)
 
 RASTER_TEMPLATE = RasterTemplate(PARTITION_SIZE, PADDING, ROWS, COLS, CELL_SIZE, NO_DATA_VALUE, Y_MAX, X_MAX)
 

@@ -1,15 +1,19 @@
-import os
-import argparse
+def neighbour_generator(neighbour_range):
+    for i in neighbour_range:
+        for j in neighbour_range:
+            yield i, j
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--folder", help="Cost raster file", type=str, default=f"{os.getcwd()}/demo")
-    args = parser.parse_args()
-    print(args)
-    print(os.listdir(args.folder))
-    return
+for i, j in neighbour_generator(range(-1, 2)):
+    print(i,j)
+    break
+else:
+    print("1")
+for i, j in neighbour_generator(range(-1, 2)):
+    print(i,j)
+else:
+    print("2")
 
-
-if __name__ == "__main__":
-    main()
+for i in range(-1,2):
+    for j in range(-1, 2):
+        print(i,j)

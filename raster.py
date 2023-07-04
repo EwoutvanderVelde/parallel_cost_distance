@@ -14,7 +14,7 @@ class RasterTemplate:
 
 
 class Raster:
-    def __init__(self, raster_template: RasterTemplate, partition, raster_band, verbose=False) -> None:
+    def __init__(self, raster_template: RasterTemplate, partition, raster_band) -> None:
         self.PARTITION_SIZE = raster_template.PARTITION_SIZE
         self.PADDING = raster_template.PADDING
         self.ROWS = raster_template.ROWS
@@ -47,12 +47,6 @@ class Raster:
         if x_offset + x_range > self.COLS:
             x_range = self.COLS - x_offset
 
-        if verbose:
-            print(f"x_offset: {x_offset}, "
-                  f"y_offset: {y_offset}, "
-                  f"x_range: {x_range}, "
-                  f"y_range: {y_range}")
-
         data = np.abs(raster_band.ReadAsArray(x_offset, y_offset, x_range, y_range))
         data[data == self.NO_DATA_VALUE] = np.inf
 
@@ -63,39 +57,21 @@ class Raster:
         self.y_range = y_range
         self.x_range = x_range
 
-    def to_string(self):
-        res = f"partition = {self.partition}\n" \
-              f"y_offset = {self.y_offset}\n" \
-              f"x_offset = {self.x_offset}\n" \
-              f"y_range = {self.y_range}\n" \
-              f"x_range = {self.x_range}\n" \
-              f"shape = {self.array.shape}"
-        return res
-
-    def add_global_boundary_and_padding(self, verbose=False) -> None:
-        # data, y_offset, x_offset, y_range, x_range, verbose=False):
+    def add_global_boundary_and_padding(self) -> None:
         if self.x_offset == 0:
-            if verbose:
-                print(f"Padding x_offset with {self.PADDING}")
             self.array = np.pad(self.array, [(0, 0), (self.PADDING, 0)],
                                 mode="constant",
                                 constant_values=np.inf)
         if self.y_offset == 0:
-            if verbose:
-                print(f"Padding y_offset with {self.PADDING}")
             self.array = np.pad(self.array, [(self.PADDING, 0), (0, 0)],
                                 mode="constant",
                                 constant_values=np.inf)
         if self.x_range + self.x_offset >= self.COLS:
-            if verbose:
-                print(f"Padding x_range with {self.PARTITION_SIZE + 2 * self.PADDING - self.x_range}")
             self.array = np.pad(self.array,
                                 [(0, 0), (0, self.PARTITION_SIZE + 2 * self.PADDING - self.x_range)],
                                 mode="constant",
                                 constant_values=np.inf)
         if self.y_range + self.y_offset >= self.ROWS:
-            if verbose:
-                print(f"Padding y_range with {self.PARTITION_SIZE + 2 * self.PADDING - self.y_range}")
             self.array = np.pad(self.array,
                                 [(0, self.PARTITION_SIZE + 2 * self.PADDING - self.y_range), (0, 0)],
                                 mode="constant",
@@ -107,5 +83,6 @@ class Raster:
             self.array = self.array[:self.y_range + self.PADDING, :]
         if self.partition[1] == self.X_MAX:
             self.array = self.array[:, :self.x_range + self.PADDING]
+
         # local padding
         self.array = self.array[self.PADDING:-self.PADDING, self.PADDING:- self.PADDING]

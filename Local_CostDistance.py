@@ -4,16 +4,21 @@ import numpy as np
 from raster import Raster
 
 
-def is_valid_neighbour(proposed_y, proposed_x, max_y, max_x) -> bool:
+def is_valid(proposed_y, proposed_x, max_y, max_x) -> bool:
     return 0 <= proposed_y <= max_y and 0 <= proposed_x <= max_x
 
 
-def is_on_bounds(location, padding, partition_size) -> bool:
+def is_in_bound(location, padding, partition_size) -> bool:
+    return padding <= location[0] <= partition_size and padding <= location[1] <= partition_size
+
+
+def is_on_bound(location, padding, partition_size) -> bool:
     return padding == location[0] or partition_size == location[0] or padding == location[1] or partition_size == location[1]
 
 
-def is_in_bounds(location, padding, partition_size) -> bool:
-    return padding <= location[0] <= partition_size and padding <= location[1] <= partition_size
+def is_lower(new_value, old_value) -> bool:
+    # TODO find better way to deal with floating point
+    return new_value < old_value and np.abs(new_value - old_value) > .2
 
 
 def get_neighbour_partitions(accumulated_cost_raster: Raster, change) -> [tuple]:
@@ -25,35 +30,35 @@ def get_neighbour_partitions(accumulated_cost_raster: Raster, change) -> [tuple]
     for relative_neighbour in change:
 
         if relative_neighbour == 1:
-            if is_valid_neighbour(current_y + 1, current_x - 1, max_y, max_x):
+            if is_valid(current_y+1, current_x-1, max_y, max_x):
                 neighbour_list.add((current_y + 1, current_x-1))
                 continue
         if relative_neighbour == 2:
-            if is_valid_neighbour(current_y + 1, current_x, max_y, max_x):
+            if is_valid(current_y+1, current_x, max_y, max_x):
                 neighbour_list.add((current_y + 1, current_x))
                 continue
         if relative_neighbour == 3:
-            if is_valid_neighbour(current_y + 1, current_x + 1, max_y, max_x):
+            if is_valid(current_y+1, current_x+1, max_y, max_x):
                 neighbour_list.add((current_y + 1, current_x+1))
                 continue
         if relative_neighbour == 4:
-            if is_valid_neighbour(current_y, current_x - 1, max_y, max_x):
+            if is_valid(current_y, current_x-1, max_y, max_x):
                 neighbour_list.add((current_y, current_x-1))
                 continue
         if relative_neighbour == 6:
-            if is_valid_neighbour(current_y, current_x + 1, max_y, max_x):
+            if is_valid(current_y, current_x+1, max_y, max_x):
                 neighbour_list.add((current_y, current_x+1))
                 continue
         if relative_neighbour == 7:
-            if is_valid_neighbour(current_y - 1, current_x - 1, max_y, max_x):
+            if is_valid(current_y-1, current_x-1, max_y, max_x):
                 neighbour_list.add((current_y-1, current_x-1))
                 continue
         if relative_neighbour == 8:
-            if is_valid_neighbour(current_y - 1, current_x, max_y, max_x):
+            if is_valid(current_y-1, current_x, max_y, max_x):
                 neighbour_list.add((current_y-1, current_x))
                 continue
         if relative_neighbour == 9:
-            if is_valid_neighbour(current_y - 1, current_x + 1, max_y, max_x):
+            if is_valid(current_y-1, current_x+1, max_y, max_x):
                 neighbour_list.add((current_y-1, current_x+1))
                 continue
 
@@ -75,38 +80,37 @@ def create_active_cell_dict(accumulated_cost) -> []:
     return active_cells
 
 
-def get_relative_neighbour_position(current_tuple: (int, int), padding, partition_size) -> {int}:
+def get_relative_neighbour_position(location: (int, int), padding, partition_size) -> {int}:
     """
     Returns the num-pad position of the neighbouring partition
     """
-    calc_y, calc_x = current_tuple
 
-    if calc_y == calc_x == padding:
+    if location[0] == location[1] == padding:
         return {4, 7, 8}
-    if calc_y == calc_x == partition_size:
+    if location[0] == location[1] == partition_size:
         return {2, 3, 6}
-    if calc_y == padding and calc_x == partition_size:
+    if location[0] == padding and location[1] == partition_size:
         return {8, 9, 6}
-    if calc_y == partition_size and calc_x == padding:
+    if location[0] == partition_size and location[1] == padding:
         return {4, 1, 2}
-    if not(padding < calc_y < partition_size or padding < calc_x < partition_size):
+    if not(padding < location[0] < partition_size or padding < location[1] < partition_size):
         return set()
-    if calc_y == padding:
+    if location[0] == padding:
         return {8}
-    if calc_y == partition_size:
+    if location[0] == partition_size:
         return {2}
-    if calc_x == padding:
+    if location[1] == padding:
         return {4}
-    if calc_x == partition_size:
+    if location[1] == partition_size:
         return {6}
-    raise ValueError(f"received non supported tuple {current_tuple}")
+    raise ValueError(f"received non supported tuple {location}")
 
 
-def get_accumulated_cost(cost_raster, local_tuple, calc_tuple, distance, local_cost) -> float:
+def calculate_accumulated_cost(cost_raster, local_tuple, calc_tuple, distance, local_cost) -> float:
     return (cost_raster[local_tuple] + cost_raster[calc_tuple]) / 2 * distance + local_cost
 
 
-def neighbour_generator(neighbour_range):
+def neighbour_generator(neighbour_range) -> (int, int):
     for i in neighbour_range:
         for j in neighbour_range:
             yield i, j
@@ -135,29 +139,32 @@ def do_cost_distance(cost_raster: Raster, accumulated_cost_raster: Raster) -> (R
 
     while active_cells:
         local_accumulated_cost, local_tuple = heapq.heappop(active_cells)
-        neighbours = neighbour_generator(neighbour_range)
 
-        for i, j in neighbours:
-            if i == 0 and j == 0:  # i == 0 & j == 0 is the local cell itself
-                break
+        for i, j in neighbour_generator(neighbour_range):
+            if i == 0 and j == 0:  # i == 0 & j == 0 is the cell itself
+                continue
 
             neighbour_y, neighbour_x = local_tuple[0] + i, local_tuple[1] + j
             neighbour_tuple = (neighbour_y, neighbour_x)
 
-            if not is_in_bounds(neighbour_tuple, padding, partition_size):
-                break
+            if not is_in_bound(neighbour_tuple, padding, partition_size):
+                continue
 
             distance = get_distance(i, j)
-            new_value = get_accumulated_cost(cost_surface_pad, local_tuple, neighbour_tuple, distance, local_accumulated_cost)
+            new_value = calculate_accumulated_cost(cost_surface_pad, local_tuple, neighbour_tuple, distance, local_accumulated_cost)
             old_value = accumulated_cost[neighbour_tuple]
 
-            # TODO find better way to correct for floating point problems
-            if new_value < old_value and np.abs(new_value - old_value) > .2:
-                accumulated_cost[neighbour_tuple] = min(accumulated_cost[neighbour_tuple], new_value)
-                heapq.heappush(active_cells, (new_value, neighbour_tuple))
-                if is_on_bounds(neighbour_tuple, padding, partition_size):
-                    neighbours = get_relative_neighbour_position(neighbour_tuple, padding, partition_size)
-                    relative_neighbours = relative_neighbours.union(neighbours)
+            if not is_lower(new_value, old_value):
+                continue
+
+            accumulated_cost[neighbour_tuple] = new_value
+            heapq.heappush(active_cells, (new_value, neighbour_tuple))
+
+            if not is_on_bound(neighbour_tuple, padding, partition_size):
+                continue
+
+            neighbours = get_relative_neighbour_position(neighbour_tuple, padding, partition_size)
+            relative_neighbours = relative_neighbours.union(neighbours)
 
     neighbours_to_update = []
     if relative_neighbours:
