@@ -5,23 +5,39 @@ from raster import Raster
 
 
 def is_valid(proposed_y, proposed_x, max_y, max_x) -> bool:
+    """
+    Check ik a neighbouring partition exists
+    """
     return 0 <= proposed_y <= max_y and 0 <= proposed_x <= max_x
 
 
 def is_in_bound(location, padding, partition_size) -> bool:
+    """
+    Check if a location is within bound of the un-padded partition
+    """
     return padding <= location[0] <= partition_size and padding <= location[1] <= partition_size
 
 
 def is_on_bound(location, padding, partition_size) -> bool:
+    """
+    Check if a location is on the bound of the un-padded partition
+    """
     return padding == location[0] or partition_size == location[0] or padding == location[1] or partition_size == location[1]
 
 
 def is_lower(new_value, old_value) -> bool:
+    """
+    Check if the proposed ACD is lower that the current stored value
+    Function has a threshold to correct for floating point errors
     # TODO find better way to deal with floating point
-    return new_value < old_value and np.abs(new_value - old_value) > .2
+    """
+    return new_value < old_value and np.abs(new_value - old_value) > .05
 
 
 def get_neighbour_partitions(accumulated_cost_raster: Raster, change) -> [tuple]:
+    """
+    Transform the num-pad position to the neighbour into the partition location
+    """
     current_y, current_x = accumulated_cost_raster.partition
     max_y = accumulated_cost_raster.Y_MAX
     max_x = accumulated_cost_raster.X_MAX
@@ -66,6 +82,10 @@ def get_neighbour_partitions(accumulated_cost_raster: Raster, change) -> [tuple]
 
 
 def create_active_cell_dict(accumulated_cost) -> []:
+    """
+    Creating a heap list with the starting cells for the cost distance calculations
+    Source cells will be starting cell, as well as all non-infinite cells on the boundary from neighbouring partitions
+    """
     active_cells = []
     heapq.heapify(active_cells)
     known = (np.where(accumulated_cost == 0))
@@ -107,17 +127,25 @@ def get_relative_neighbour_position(location: (int, int), padding, partition_siz
 
 
 def calculate_accumulated_cost(cost_raster, local_tuple, calc_tuple, distance, local_cost) -> float:
+    """
+    Accumulated cost at a cell. Note, this is not the minimum accumulated cost
+    """
     return (cost_raster[local_tuple] + cost_raster[calc_tuple]) / 2 * distance + local_cost
 
 
 def neighbour_generator(neighbour_range) -> (int, int):
+    """
+    Generator function to loop though the neighbours with one loop
+    """
     for i in neighbour_range:
         for j in neighbour_range:
             yield i, j
 
 
 def do_cost_distance(cost_raster: Raster, accumulated_cost_raster: Raster) -> (Raster, bool):
-
+    """
+    Main function to perform cost distance calculations on a raster.
+    """
     cell_size = cost_raster.CELL_SIZE
     diagonal = np.sqrt(2*cell_size**2)
 
@@ -151,7 +179,11 @@ def do_cost_distance(cost_raster: Raster, accumulated_cost_raster: Raster) -> (R
                 continue
 
             distance = get_distance(i, j)
-            new_value = calculate_accumulated_cost(cost_surface_pad, local_tuple, neighbour_tuple, distance, local_accumulated_cost)
+            new_value = calculate_accumulated_cost(cost_surface_pad,
+                                                   local_tuple,
+                                                   neighbour_tuple,
+                                                   distance,
+                                                   local_accumulated_cost)
             old_value = accumulated_cost[neighbour_tuple]
 
             if not is_lower(new_value, old_value):
