@@ -19,4 +19,4 @@ Commandline arguments:
 Currently, the program can use geotiff files as input and saves the output raster as a geotiff.
 Cell sizes has to be the equal for the x and y direction.
 
-When given no arguments, demo files are used for the cost and source raster
+When given no arguments, demo files are used for the cost and source raster.
