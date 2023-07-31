@@ -3,7 +3,7 @@
 A commandline parallel algorithm to do cost cost distance analysis.
 
 This algorithm was developed for a Masters-Thesis at Utrecht University.
-The corresponding Thesis can be found at: TODO: Add link when published.
+The corresponding Thesis can be found at: https://studenttheses.uu.nl/handle/20.500.12932/44308
 
 Code needs to be run with an MPI executable like mpiexec with a minimum of 2 processes.
 
